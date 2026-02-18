@@ -1,79 +1,60 @@
 import streamlit as st
 import pandas as pd
 
-# 1. Configuração da Página e Estilo
-st.set_page_config(page_title="Portal de Egressos ESMAC", page_icon="🎓", layout="wide")
+# 1. Configuração da Página
+st.set_page_config(page_title="Portal de Egressos ESMAC", page_icon="🎓")
 
-# CSS personalizado para melhorar as cores e fontes
+# 2. Estilo Visual (CSS)
 st.markdown("""
     <style>
-    .main { background-color: #f5f7f9; }
-    .stTextInput { border-radius: 20px; }
-    .stButton>button { border-radius: 20px; width: 100%; background-color: #004a8d; color: white; }
-    .res-card { 
-        background-color: white; 
-        padding: 20px; 
-        border-radius: 15px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        margin-bottom: 10px;
-        border-left: 5px solid #004a8d;
+    .stTextInput > div > div > input { border-radius: 10px; border: 2px solid #004a8d; }
+    .card {
+        background-color: white;
+        padding: 20px;
+        border-radius: 15px;
+        border-left: 10px solid #004a8d;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
     }
     </style>
-    """, unsafe_index=True)
+    """, unsafe_allow_html=True)
 
-# 2. Cabeçalho Dinâmico
-col1, col2 = st.columns([1, 4])
-with col1:
-    st.title("🎓")
-with col2:
-    st.title("Portal de Consulta de Formados")
-    st.subheader("Secretaria Acadêmica ESMAC")
-
+# 3. Cabeçalho
+st.title("🎓 Portal de Consulta de Formados")
+st.markdown("Verificação de autenticidade de diplomas — **ESMAC**")
 st.divider()
 
-# 3. Função de Dados (com Cache rápido)
-URL_PLANILHA = "https://docs.google.com/spreadsheets/d/1jdrtajTIE3eoGEtpuGCgpcMqZSs4iHLnoIHRWYeM4JM/export?format=csv&gid=0"
+# 4. Dados da Planilha
+URL = "https://docs.google.com/spreadsheets/d/1jdrtajTIE3eoGEtpuGCgpcMqZSs4iHLnoIHRWYeM4JM/export?format=csv&gid=0"
 
 @st.cache_data(ttl=60)
-def carregar_dados():
-    # Lê a planilha, garante que os nomes das colunas fiquem limpos
-    df = pd.read_csv(URL_PLANILHA)
-    return df
+def load_data():
+    return pd.read_csv(URL).astype(str)
 
 try:
-    df = carregar_dados()
-    
-    # Exibe uma métrica simples do total na base
-    st.info(f"💡 Nossa base conta atualmente com {len(df)} registros de diplomas emitidos.")
-
-    # 4. Área de Busca Centralizada
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        busca = st.text_input("🔍 Pesquisar por Nome Completo ou identificador:", placeholder="Ex: MARA DO SOCORRO...")
+    df = load_data()
+    busca = st.text_input("🔍 Digite o Nome Completo para verificar:", placeholder="Ex: MARA DO SOCORRO...")
 
     if busca:
-        # Filtro inteligente (ignora acentos e maiúsculas/minúsculas)
-        resultado = df[df.apply(lambda row: row.astype(str).str.contains(busca, case=False, na=False)).any(axis=1)]
+        # Busca ignorando maiúsculas/minúsculas
+        resultado = df[df.apply(lambda row: row.str.contains(busca, case=False, na=False)).any(axis=1)]
         
         if not resultado.empty:
-            st.success(f"✅ Encontramos {len(resultado)} registro(s) correspondente(s):")
-            
-            # Exibe os resultados em formato de "Fichas" (Cards) em vez de tabela feia
+            st.success(f"✅ Encontramos {len(resultado)} registro(s) oficial(is):")
             for i, row in resultado.iterrows():
-                with st.container():
-                    st.markdown(f"""
-                    <div class="res-card">
-                        <h4>👤 {row['Diplomado']}</h4>
-                        <p><b>📚 Curso:</b> {row['Curso']} ({row['Grau']})</p>
-                        <p><b>📅 Conclusão:</b> {row['Data de Conclusão']} | <b>🎓 Colação:</b> {row['Data de colação de Grau']}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                # Exibição em formato de Card
+                st.markdown(f"""
+                <div class="card">
+                    <h3 style='margin:0; color:#004a8d;'>👤 {row['Diplomado']}</h3>
+                    <p style='margin:5px 0;'><b>📚 Curso:</b> {row['Curso']} — {row['Grau']}</p>
+                    <p style='margin:0;'><b>📅 Conclusão:</b> {row['Data de Conclusão']}</p>
+                </div>
+                """, unsafe_allow_html=True)
         else:
-            st.error("❌ Nenhum registro encontrado. Certifique-se de que o nome está correto ou entre em contato com a secretaria.")
+            st.warning("❌ Nenhum registro encontrado. Verifique a grafia do nome.")
 
 except Exception as e:
-    st.warning("🔄 Sincronizando com a base de dados... Por favor, recarregue em instantes.")
+    st.error("Sincronizando base de dados... Recarregue a página em instantes.")
 
-# Rodapé
-st.markdown("---")
-st.caption("© 2026 Escola Superior Madre Celeste - ESMAC | Gestão de Tecnologia Educacional")
+st.divider()
+st.caption("© 2026 Escola Superior Madre Celeste - ESMAC | Secretaria Acadêmica")
